@@ -29,18 +29,15 @@ download_file <- function(year) {
 ```
 
 ```{r}
-years <- 15:18
-years
-
 # sy15 <- download_file(15)
+
+years <- 15:18
 
 # loop through years, apply download file function
 data <- map_df(years, ~download_file(.x))
 
 #OR this also works: 
 # map_df(years, download_file)
-
-
 
 ```
 
@@ -51,7 +48,20 @@ Filter for only student groups coded as "White" or "Hispanic/Latino".
 Select variables related to the number of students in each of the levels (1:4), and not percentages or collapsed levels.
 Remove any row that has missing data in any of the n variables
 
-```{r}
+```{r data cleaning}
+
+data1 <- data %>%
+  pivot_longer(
+    cols = c(11, 13, 15, 17),
+    names_to = "level", 
+    values_to = "n")
+# need to remember how to use names_pattern to drop part of string (change "Number Level #" to just "#") 
+
+data1 <- data1 %>%
+  select(`Academic Year`, District, School, `Student Group`, `Grade Level`, level, n) %>% 
+  filter(`Student Group` == "Hispanic/Latino" |
+           `Student Group` == "White") %>%
+  filter(n != "NA")
 
 ```
 
@@ -59,7 +69,20 @@ Remove any row that has missing data in any of the n variables
 
 ```{r}
 
+str(data1)
+attributes(data1)
 
+as.integer(data1$n)
+
+data1 %>%
+  group_by(District, `Academic Year`, `Student Group`, level) %>%
+  mutate(n = sum(n)) %>%
+  pivot_wider(
+    names_from = `Student Group`,
+    values_from = n)
+# how to I make this so that it sums ACROSS schools and grade level?
+  
+  
 ```
 
 #Part B: Acheivement Gaps 
