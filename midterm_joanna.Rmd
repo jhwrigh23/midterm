@@ -28,12 +28,29 @@ download_file <- function(year) {
 
 ```
 
+```{r}
+years <- 15:18
+years
+
+# sy15 <- download_file(15)
+
+# loop through years, apply download file function
+data <- map_df(years, ~download_file(.x))
+
+#OR this also works: 
+# map_df(years, download_file)
+
+
+
+```
+
 
 Conduct some basic data cleaning to make your data file look like the following.
 
 Filter for only student groups coded as "White" or "Hispanic/Latino".
 Select variables related to the number of students in each of the levels (1:4), and not percentages or collapsed levels.
 Remove any row that has missing data in any of the n variables
+
 ```{r}
 
 ```
