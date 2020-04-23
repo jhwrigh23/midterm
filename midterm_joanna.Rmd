@@ -69,20 +69,17 @@ data1 <- data1 %>%
 
 ```{r}
 
-str(data1)
-attributes(data1)
-
-as.integer(data1$n)
-
 data1 %>%
   group_by(District, `Academic Year`, `Student Group`, level) %>%
-  mutate(n = sum(n)) %>%
+  summarise(n = sum(n)) %>%
   pivot_wider(
-    names_from = `Student Group`,
+    names_from = `Student Group`, 
     values_from = n)
-# how to I make this so that it sums ACROSS schools and grade level?
-  
-  
+
+data1 %>%
+  group_by(District, level, `Academic Year`) %>%
+  summarise(n_distinct(School))
+
 ```
 
 #Part B: Acheivement Gaps 
