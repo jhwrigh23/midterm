@@ -107,7 +107,32 @@ library(gapr)
 ##1. (10 points) Estimate an achievement gap effect size for every school district in the state that reported data on both student groups (i.e., using the data we created above), for each academic year. Note, on my computer this took about 38 seconds. It will likely take a bit longer for you, but shouldn’t take too long. You may get a warning. Just go ahead and ignore that for now.
 
 ```{r}
+td2[1:4, ] %>% # data source - just first four rows for first district
+  gapr::estimate_v("white", "hispanic_latino") 
 
+#make academic year & district a factor 
+td2 <- td2 %>% 
+  mutate(academic_year = as.factor(academic_year))
+
+str(td2)
+
+d_split <- split(td2, td2$district)
+
+#map estimate_v for all school district 
+#gap <- map(d_split, ~estimate_v("white", "hispanic_latino", data = .x))
+#yay worked! (took a while to run)
+
+#extract only 2 school district to play w code
+sub_split <- d_split[1:2]
+str(sub_split)
+
+sub_split[1]
+sub_split[1]
+
+gap <- map(sub_split, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x$academic_year))
+
+gap
 ```
 
 
