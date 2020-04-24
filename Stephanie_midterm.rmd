@@ -126,13 +126,41 @@ d_split <- split(td2, td2$district)
 sub_split <- d_split[1:2]
 str(sub_split)
 
-sub_split[1]
-sub_split[1]
+#returns factor 
+sub_split[[1]]$academic_year
 
+#returns tibble
+sub_split[[1]][1]
+
+#works for across school district (not separated by year)
 gap <- map(sub_split, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x$academic_year))
-
+                                  data = .x))
 gap
+
+#nest by district 
+by_district <- td2 %>%
+    nest(-district)
+by_district
+
+
+by_district_gap <- by_district %>%
+  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x)))
+
+#subset by only 2 district to simplify and for playing w code
+sub_by_district <- td2 %>%
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J") %>% 
+    nest(-district)
+    
+sub_by_district
+
+
+# by_district_gap_sub <- sub_by_district %>%
+#   mutate(year = map(data, "academic_year"))
+   
+str(by_district_gap_sub)
+
 ```
 
 
