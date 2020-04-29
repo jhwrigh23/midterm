@@ -107,6 +107,20 @@ library(gapr)
 ##1. (10 points) Estimate an achievement gap effect size for every school district in the state that reported data on both student groups (i.e., using the data we created above), for each academic year. Note, on my computer this took about 38 seconds. It will likely take a bit longer for you, but shouldn’t take too long. You may get a warning. Just go ahead and ignore that for now.
 
 ```{r}
+
+#nest data by year and district 
+by_district <- td2 %>%
+    nest(-district, -academic_year)
+by_district
+
+#run achievement gap effect size 
+by_district_gap <- by_district %>%
+  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x)))
+```
+
+
+```{r}
 td2[1:4, ] %>% # data source - just first four rows for first district
   gapr::estimate_v("white", "hispanic_latino") 
 
@@ -137,15 +151,7 @@ gap <- map(sub_split, ~estimate_v("white", "hispanic_latino",
                                   data = .x))
 gap
 
-#nest by district 
-by_district <- td2 %>%
-    nest(-district)
-by_district
 
-
-by_district_gap <- by_district %>%
-  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x)))
 
 #subset by only 2 district to simplify and for playing w code
 sub_by_district <- td2 %>%
@@ -169,6 +175,46 @@ str(by_district_gap_sub)
 Hint: You need to select unique districts.
 
 ```{r}
+dists <- unique(by_district_gap$district)[1:100]
+
+test <- by_district_gap %>% 
+  filter(district %in% dists)
+
+test$gap
+
+str(test$gap)
+
+#need to extract v and v_se
+
+test[["gap"]][[1]]["v"]
+test[["gap"]][[1]]["v_se"]
+
+#use unnest to extract v and v_se
+test <- test %>% 
+  mutate(tidied = map(gap, broom::tidy)) %>% 
+  select(academic_year, district, tidied) %>%  
+  unnest() %>%  
+  select(academic_year, district, column, mean)
+  
+
+str(test)
+
+test <- test %>% pivot_wider(names_from = "column", values_from = "mean")
+test
+
+#testing codes not working 
+test %>%
+    mutate(v = map_dbl(gap, ~([[.x]][[1]]["v"])))
+
+p12 = map_dbl(comp12, list("Pr(>F)", 2)))
+
+#extract v and v_se
+test$gap[[1]]$v
+
+str(test2)
+
+test2$v
+test$gap
 
 ```
 
