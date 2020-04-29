@@ -141,39 +141,30 @@ sub_split[[1]]$academic_year
 #returns tibble
 sub_split[[1]][1]
 
-#works for across school district (not separated by year)
-gap <- map(sub_split, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x))
-gap
-
-
-#nest by district 
+#nest by district and year 
 by_district <- td2 %>%
-    nest(-district)
+    nest(-district, -academic_year)
 by_district
 
+#subset by only 2 district and year to simplify and for playing with code:
 
-by_district_gap <- by_district %>%
-  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x)))
-
-#subset by only 2 district to simplify and for playing w code
-sub_by_district <- td2 %>%
+sub_by_district_year <- td2 %>%
   filter(district == "Adrian SD 61" |
            district == "Amity SD 4J") %>% 
-    nest(-district)
-
+    nest(-district, -academic_year)
 
 #loop through sub_by_district for function estimate_v, extract v, auc, v_se:  
-sub_by_district_1 <- sub_by_district %>%
-  mutate(gap = map(sub_by_district$data, ~estimate_v("white", "hispanic_latino",
+sub_by_district_year_results <- sub_by_district_year %>%
+  mutate(gap = map(sub_by_district_year$data, ~estimate_v("white", "hispanic_latino",
                                   data = .x)),
          v = map_dbl(gap, "v"),
          auc = map_dbl(gap, "auc"),
          v_se = map_dbl(gap, "v_se"))
-         
 
-# this gets us results, but for district overall, not by year. 
+# cleaning up sub_by_district_year to make a table to answer question 1: acheivement gap effect size for each district in each academic year: 
+
+sub_by_district_year_results %>%
+  select(1, 2, 5:7)
 
 ```
 
