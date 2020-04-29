@@ -161,10 +161,17 @@ sub_by_district_year_results <- sub_by_district_year %>%
          auc = map_dbl(gap, "auc"),
          v_se = map_dbl(gap, "v_se"))
 
-# cleaning up sub_by_district_year to make a table to answer question 1: acheivement gap effect size for each district in each academic year: 
+sub_by_district_year_results <- sub_by_district_year %>%
+  mutate(gap = map(sub_by_district_year$data, ~estimate_v("white", "hispanic_latino",
+                                  data = .x))) %>%
+           select(-data) %>%
+           unnest(gap)
 
-sub_by_district_year_results %>%
-  select(1, 2, 5:7)
+by_district <- by_district %>%
+    mutate(gap = map(by_district$data, ~estimate_v("white", "hispanic_latino",
+                                  data = .x))) %>%
+           select(-data) %>%
+           unnest(gap)
 
 ```
 
