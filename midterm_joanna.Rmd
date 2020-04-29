@@ -50,18 +50,22 @@ Remove any row that has missing data in any of the n variables
 
 ```{r data cleaning}
 
-data1 <- data %>%
-  pivot_longer(
-    cols = c(11, 13, 15, 17),
-    names_to = "level", 
-    values_to = "n")
-# need to remember how to use names_pattern to drop part of string (change "Number Level #" to just "#") 
+names(data)
 
-data1 <- data1 %>%
+td <- data %>% 
+  pivot_longer(contains("Number Level"), 
+  names_to = "level", 
+  values_to = "n") %>%  
+  mutate(level = str_extract(level, "[0-9]")) %>% 
   select(`Academic Year`, District, School, `Student Group`, `Grade Level`, level, n) %>% 
   filter(`Student Group` == "Hispanic/Latino" |
-           `Student Group` == "White") %>%
-  filter(n != "NA")
+           `Student Group` == "White") %>% 
+  drop_na()
+  
+td <- td %>%
+  janitor::clean_names()
+
+td
 
 ```
 
@@ -69,16 +73,32 @@ data1 <- data1 %>%
 
 ```{r}
 
-data1 %>%
-  group_by(District, `Academic Year`, `Student Group`, level) %>%
-  summarise(n = sum(n)) %>%
-  pivot_wider(
-    names_from = `Student Group`, 
-    values_from = n)
+str(td)
+names(td)
 
-data1 %>%
-  group_by(District, level, `Academic Year`) %>%
-  summarise(n_distinct(School))
+#create 2 separate df and join them together 
+#unique schools 
+
+unique_school <- td %>% 
+  group_by(district) %>% 
+  summarise(n_schools = length(unique(school))) %>% 
+  ungroup()
+
+#number of students (n)
+students <- td %>% 
+  group_by(district, academic_year, student_group, level) %>% 
+  summarise(n = sum(n)) %>% 
+  pivot_wider(names_from = student_group, 
+              values_from = n) %>% 
+  janitor::clean_names() %>% 
+  ungroup()
+
+#join the 2 df together, drop NA, re-order the columns
+td2 <- left_join(students, unique_school) %>% 
+  drop_na() %>% 
+  select(academic_year, district, n_schools, level, hispanic_latino, white)
+
+td2
 
 ```
 
@@ -87,11 +107,68 @@ data1 %>%
 ```{r}
 library(gapr)
 
+td[1:4, ] %>% # data source - just first four rows for first district
+  estimate_v("white", "hispanic_latino") # columns for reference/focal groups
+
 ```
 
 ##1. (10 points) Estimate an achievement gap effect size for every school district in the state that reported data on both student groups (i.e., using the data we created above), for each academic year. Note, on my computer this took about 38 seconds. It will likely take a bit longer for you, but shouldn’t take too long. You may get a warning. Just go ahead and ignore that for now.
 
 ```{r}
+
+td2[1:4, ] %>% # data source - just first four rows for first district
+  gapr::estimate_v("white", "hispanic_latino") 
+
+# make academic year & district a factor 
+td2 <- td2 %>% 
+  mutate(academic_year = as.factor(academic_year))
+
+str(td2)
+
+d_split <- split(td2, td2$district)
+
+#map estimate_v for all school district 
+#gap <- map(d_split, ~estimate_v("white", "hispanic_latino", data = .x))
+#yay worked! (took a while to run)
+
+#extract only 2 school district to play w code
+sub_split <- d_split[1:2]
+str(sub_split)
+
+#returns factor 
+sub_split[[1]]$academic_year
+
+#returns tibble
+sub_split[[1]][1]
+
+#works for across school district (not separated by year)
+gap <- map(sub_split, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x))
+gap
+
+
+#nest by district 
+by_district <- td2 %>%
+    nest(-district)
+by_district
+
+
+by_district_gap <- by_district %>%
+  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x)))
+
+#subset by only 2 district to simplify and for playing w code
+sub_by_district <- td2 %>%
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J") %>% 
+    nest(-district)
+
+
+#loop through sub_by_district for function estimate_v: 
+map(sub_by_district$data, ~estimate_v("white", "hispanic_latino",
+                                  data = .x))
+
+# this gets us results, but for district overall, not by year. Do we need to set up sub_by_district such that it's grouped by year? 
 
 ```
 
