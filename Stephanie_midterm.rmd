@@ -147,13 +147,15 @@ pd_subset <- pd %>%
   filter(district == "Adrian SD 61" |
            district == "Amity SD 4J")
 
+
+#need to define year as numeric (from character) in order to connect line
 pd %>% filter(district == "Bandon SD 54") %>% 
   ggplot(aes(academic_year, v)) + 
   geom_point() +
   geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
   geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
 
-#define year as numeric 
+
 
 ```
 
