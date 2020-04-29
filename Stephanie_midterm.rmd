@@ -143,19 +143,59 @@ pd %>% count(district)
 
 ```{r}
 
+theme_set(theme_minimal())
+
 pd_subset <- pd %>% 
   filter(district == "Adrian SD 61" |
            district == "Amity SD 4J")
 
-
+#plot 1 graph
 #need to define year as numeric (from character) in order to connect line
 pd %>% filter(district == "Bandon SD 54") %>% 
   ggplot(aes(academic_year, v)) + 
-  geom_point() +
+  geom_point(aes(color = v > 0)) +
+  scale_color_manual(values = c("#A563CA", "#6DA3F9")) +
   geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
   geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
 
 
+#loop through with 2 school districts using pd_subset
+
+plots <- pd_subset %>% 
+  group_by(district) %>% 
+  nest() %>% 
+  mutate(plots = pmap(list(district, data), 
+                      ~ggplot(..2, aes(academic_year, v)) +
+                        geom_point(color = ) +
+                        geom_line(aes(x = as.numeric(as.factor
+                                                     (academic_year))),
+                                  color = "gray40") +
+                        geom_errorbar(aes(ymin = v - v_se, 
+                                          ymax = v + v_se), 
+                                      color = "gray40") +
+                        geom_hline(yintercept = 0, color = "#cb615d")
+                      )) 
+
+#look at individual plot
+plots[[3]][[1]]
+plots$plots[[1]]
+
+#example from class slide for plot and adding name to plot
+final_plots <- pulitzer %>%
+    group_by(newspaper, label) %>%
+    nest() %>%
+    mutate(plots = pmap(list(newspaper, label, data),
+    ~ggplot(..3, aes(year_range, n)) +
+        geom_col(aes(fill = n)) +
+        scale_fill_distiller(type = "seq", 
+                             limits = c(0, max(pulitzer$n)),
+                             palette = "BuPu",
+                             direction = 1) +
+        ylim(0, max(pulitzer$n)) +
+        coord_flip() +
+        labs(title = glue("Pulitzer prize winners: {..1}"),
+             x = "Year Range",
+             caption = ..2)))
 
 ```
 
@@ -163,6 +203,8 @@ pd %>% filter(district == "Bandon SD 54") %>%
 
 
 ```{r, eval = FALSE}
+#Stephanie comment: this is ranom codes I was playing with, ignore, will be deleted on final version of midterm 
+
 td2[1:4, ] %>% # data source - just first four rows for first district
   gapr::estimate_v("white", "hispanic_latino") 
 
