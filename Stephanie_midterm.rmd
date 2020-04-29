@@ -110,17 +110,47 @@ library(gapr)
 
 #nest data by year and district 
 by_district <- td2 %>%
-    nest(-district, -academic_year)
+    nest(-district, -academic_year, -n_schools)
 by_district
 
-#run achievement gap effect size 
-by_district_gap <- by_district %>%
+#run achievement gap effect size and extract auc, v and v_se
+results_by_district <- by_district %>%
   mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x)))
+                                  data = .x))) %>% 
+  select(-data) %>% 
+  unnest(gap)
 ```
 
 
+##2. (10 points) The plot below shows the achievement gap estimate for one school district across years. Produce a similar plot to the below for each of the first 100 school districts. Make sure you don’t miss the caption noting the number of schools in the district.
+
+Hint: You need to select unique districts.
+
 ```{r}
+dists <- unique(results_by_district$district)[1:100]
+
+pd <- results_by_district %>% 
+  filter(district %in% dists)
+
+unique(pd$district)
+
+#to get number of rows 
+pd %>% count(district)
+
+```
+
+##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+
+```{r}
+
+
+
+```
+
+
+
+
+```{r, eval = FALSE}
 td2[1:4, ] %>% # data source - just first four rows for first district
   gapr::estimate_v("white", "hispanic_latino") 
 
@@ -167,14 +197,6 @@ sub_by_district
    
 str(by_district_gap_sub)
 
-```
-
-
-##2. (10 points) The plot below shows the achievement gap estimate for one school district across years. Produce a similar plot to the below for each of the first 100 school districts. Make sure you don’t miss the caption noting the number of schools in the district.
-
-Hint: You need to select unique districts.
-
-```{r}
 dists <- unique(by_district_gap$district)[1:100]
 
 test <- by_district_gap %>% 
@@ -216,11 +238,6 @@ str(test2)
 test2$v
 test$gap
 
-```
-
-##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
-
-```{r}
 
 ```
 
