@@ -164,11 +164,16 @@ sub_by_district <- td2 %>%
     nest(-district)
 
 
-#loop through sub_by_district for function estimate_v: 
-map(sub_by_district$data, ~estimate_v("white", "hispanic_latino",
-                                  data = .x))
+#loop through sub_by_district for function estimate_v, extract v, auc, v_se:  
+sub_by_district_1 <- sub_by_district %>%
+  mutate(gap = map(sub_by_district$data, ~estimate_v("white", "hispanic_latino",
+                                  data = .x)),
+         v = map_dbl(gap, "v"),
+         auc = map_dbl(gap, "auc"),
+         v_se = map_dbl(gap, "v_se"))
+         
 
-# this gets us results, but for district overall, not by year. Do we need to set up sub_by_district such that it's grouped by year? 
+# this gets us results, but for district overall, not by year. 
 
 ```
 
