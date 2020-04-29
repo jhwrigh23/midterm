@@ -26,17 +26,12 @@ download_file <- function(year) {
     rio::import(link, setclass = "tibble", na = c("-", "--", "*"))
 }
 
-```
-
-```{r download_data}
 years <- 15:18
 
 # loop through years, apply download file function
 data <- map_df(years, ~download_file(.x)) %>% 
   janitor::clean_names()
 
-#OR this also works: 
-# map_df(years, download_file)
 
 ```
 
@@ -101,6 +96,8 @@ td2
 ```{r}
 
 library(gapr)
+td[1:4, ] %>% # data source - just first four rows for first district
+  estimate_v("white", "hispanic_latino") # columns for reference/focal groups
 
 ```
 
@@ -108,41 +105,17 @@ library(gapr)
 
 ```{r}
 
-td2[1:4, ] %>% 
-  gapr::estimate_v("white", "hispanic_latino")
+#nest data by year and district 
+by_district <- td2 %>%
+    nest(-district, -academic_year, -n_schools)
+by_district
 
-d_split <- td2 %>% 
-  mutate(academic_year = as.factor(academic_year)) %>% 
-  split(td2$district)
-
-d_split
-
-gap <- map(d_split, ~estimate_v("white", "hispanic_latino", data = .x))
-
-sub_split <- d_split[1:2]
-str(sub_split)
-
-
-sub_split[[1]][1]
-
-
-#nest by district with full data
-by_district <- td2 %>% 
-  nest(-district)
-
-
-dist_gap <- by_district %>% 
-   mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", data = .x)))
-
-#nest with subset of data
-sub_by_district <- td2 %>% 
-  filter(district == "Adrian SD 61" |
-           district == "Amity SD 4J") %>% 
-  nest(-district)
-
-by_dist_gap <- sub_by_district %>% 
-   mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", data = .x)))
-str(by_dist_gap)
+#run achievement gap effect size and extract auc, v and v_se
+results_by_district <- by_district %>%
+  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
+                                  data = .x))) %>% 
+  select(-data) %>% 
+  unnest(gap)
 
 ```
 
@@ -153,10 +126,56 @@ Hint: You need to select unique districts.
 
 ```{r}
 
+dists <- unique(results_by_district$district)[1:100]
+
+pd <- results_by_district %>% 
+  filter(district %in% dists)
+
+unique(pd$district)
+
+#to get number of rows 
+pd %>% count(district)
+
+
 ```
 
 ##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
 
 ```{r}
 
+pd_subset <- pd %>% 
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J")
+
+#call as.numeric on factor to connect dots
+pd %>% filter(district == "Bandon SD 54") %>% 
+  ggplot(aes(academic_year, v)) + 
+  geom_point(aes(color = v > 0)) +
+  geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
+
+
+#loop through subset of data
+plot_sub <- pd_subset %>% 
+  group_by(district) %>% 
+  nest() %>% 
+  mutate(plots = pmap(list(district, data),
+                      ~ggplot(..2, aes(academic_year, v)) +
+                        geom_point(aes(color = v > 0)) +
+                        scale_colour_manual(values =  c("#A563CA", "#6DA3F9")) +
+  geom_line(aes(x = as.numeric(as.factor(academic_year))), , color = "grey70") +
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se), color = "grey70") +
+  geom_hline(yintercept = 0, color = "#cb615d"))) +
+  theme_set(theme_minimal())
+
+plot_sub$plots[2]
+
+labs(title = "Achievement Gap Estimates: Bandon School District",
+       subtitle = "Negative values indicate <span style = 'color:#A563CA;'>White</span> students have higher average achievement Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino </span>students have higher average achievement",
+
+
+#loop through full data
+
+  
+  
 ```
