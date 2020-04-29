@@ -143,7 +143,17 @@ pd %>% count(district)
 
 ```{r}
 
+pd_subset <- pd %>% 
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J")
 
+pd %>% filter(district == "Bandon SD 54") %>% 
+  ggplot(aes(academic_year, v)) + 
+  geom_point() +
+  geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
+
+#define year as numeric 
 
 ```
 
