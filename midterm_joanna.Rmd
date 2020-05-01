@@ -127,10 +127,6 @@ str(td2)
 
 d_split <- split(td2, td2$district)
 
-#map estimate_v for all school district 
-#gap <- map(d_split, ~estimate_v("white", "hispanic_latino", data = .x))
-#yay worked! (took a while to run)
-
 #extract only 2 school district to play w code
 sub_split <- d_split[1:2]
 str(sub_split)
@@ -143,7 +139,7 @@ sub_split[[1]][1]
 
 #nest by district and year 
 by_district <- td2 %>%
-    nest(-district, -academic_year)
+    nest(-district, -academic_year, -n_schools)
 by_district
 
 #subset by only 2 district and year to simplify and for playing with code:
@@ -154,20 +150,24 @@ sub_by_district_year <- td2 %>%
     nest(-district, -academic_year)
 
 #loop through sub_by_district for function estimate_v, extract v, auc, v_se:  
-sub_by_district_year_results <- sub_by_district_year %>%
-  mutate(gap = map(sub_by_district_year$data, ~estimate_v("white", "hispanic_latino",
-                                  data = .x)),
-         v = map_dbl(gap, "v"),
-         auc = map_dbl(gap, "auc"),
-         v_se = map_dbl(gap, "v_se"))
 
+# one method: 
+# sub_by_district_year_results <- sub_by_district_year %>%
+#  mutate(gap = map(sub_by_district_year$data, ~estimate_v("white", #"hispanic_latino",
+#                                  data = .x)),
+#         v = map_dbl(gap, "v"),
+#         auc = map_dbl(gap, "auc"),
+#         v_se = map_dbl(gap, "v_se"))
+
+# more efficient: 
 sub_by_district_year_results <- sub_by_district_year %>%
   mutate(gap = map(sub_by_district_year$data, ~estimate_v("white", "hispanic_latino",
                                   data = .x))) %>%
            select(-data) %>%
            unnest(gap)
 
-by_district <- by_district %>%
+# generalizing to whole data set
+results_by_district <- by_district %>%
     mutate(gap = map(by_district$data, ~estimate_v("white", "hispanic_latino",
                                   data = .x))) %>%
            select(-data) %>%
@@ -181,6 +181,48 @@ by_district <- by_district %>%
 Hint: You need to select unique districts.
 
 ```{r}
+
+dists <- unique(results_by_district$district)[1:100]
+
+pd <- results_by_district %>% 
+  filter(district %in% dists)
+
+unique(pd$district)
+
+#to get number of rows 
+pd %>% count(district)
+
+pd_subset <- pd %>% 
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J")
+
+# as.factor() makes acacdemic year a factor; then can call as.numeric() on this to make academic_year numeric in order to connect via geam_line: 
+pd %>% filter(district == "Bandon SD 54") %>% 
+  ggplot(aes(academic_year, v)) + 
+  geom_point(aes(color = v > 0)) +
+  geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "School year",
+       y = "Average achievement difference (SD units)")
+
+# to get unique caption for each plot, first trying to just get it with one: 
+pd2 <- pd %>%
+    mutate(label = 
+    glue("Note. District included {(n_schools)} schools."))
+
+tmp_pd <- pd2 %>%
+  filter(district == "Bandon SD 54")
+
+ggplot(tmp_pd, aes(academic_year, v)) + 
+  geom_point(aes(color = v > 0)) +
+  geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "School year",
+       y = "Average achievement difference (SD units)",
+       caption = unique(tmp_pd$label))
+
 
 ```
 
