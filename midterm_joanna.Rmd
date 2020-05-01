@@ -223,6 +223,28 @@ ggplot(tmp_pd, aes(academic_year, v)) +
        y = "Average achievement difference (SD units)",
        caption = unique(tmp_pd$label))
 
+# now generalize this to loop over all plots: 
+
+pd2 %>%
+    group_by(district, label) %>%
+    nest()
+
+final_plots <- pd2 %>%
+    group_by(district, label) %>%
+    nest() %>%
+    mutate(plots = pmap(list(district, label, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+        geom_point(aes(color = v > 0)) +
+    geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+    geom_hline(yintercept = 0, color = "red") +
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = unique(pd2$label))))
+
+# now we can look at some of the plots: 
+final_plots$plots[[1]]
+final_plots$plots[[2]]
 
 ```
 
