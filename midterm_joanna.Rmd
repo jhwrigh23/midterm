@@ -269,8 +269,6 @@ final_plots <- pd2 %>%
 
 # something is wrong here. Still have many plots for each district instead of just one. 
 
-
-
 ```
 
 ##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
