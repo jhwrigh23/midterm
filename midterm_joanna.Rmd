@@ -183,6 +183,7 @@ Hint: You need to select unique districts.
 ```{r}
 
 dists <- unique(results_by_district$district)[1:100]
+dists
 
 pd <- results_by_district %>% 
   filter(district %in% dists)
@@ -206,7 +207,8 @@ pd %>% filter(district == "Bandon SD 54") %>%
   labs(x = "School year",
        y = "Average achievement difference (SD units)")
 
-# to get unique caption for each plot, first trying to just get it with one: 
+# to get unique caption for each plot, first trying to just get it with one. 
+# first, create column that is the caption we want: 
 pd2 <- pd %>%
     mutate(label = 
     glue("Note. District included {(n_schools)} schools."))
@@ -223,8 +225,8 @@ ggplot(tmp_pd, aes(academic_year, v)) +
        y = "Average achievement difference (SD units)",
        caption = unique(tmp_pd$label))
 
-# now generalize this to loop over all plots: 
-
+# now generalize this to loop over all plots.
+# to do so, for need to nest data so that we can loop through lists: 
 pd2 %>%
     group_by(district, label) %>%
     nest()
@@ -244,7 +246,30 @@ final_plots <- pd2 %>%
 
 # now we can look at some of the plots: 
 final_plots$plots[[1]]
-final_plots$plots[[2]]
+
+# Also need to create unique title for each plot: 
+
+pd2 <- pd2 %>%
+    mutate(title = 
+    glue("Achievment Gap Estimates: {(district)}"))
+
+final_plots <- pd2 %>%
+    group_by(district, label) %>%
+    nest() %>%
+    mutate(plots = pmap(list(district, label, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+        geom_point(aes(color = v > 0)) +
+    geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+    geom_hline(yintercept = 0, color = "red") +
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = unique(pd2$label),
+         title = unique(pd2$title))))
+
+# something is wrong here. Still have many plots for each district instead of just one. 
+
+
 
 ```
 
