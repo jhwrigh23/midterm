@@ -200,11 +200,19 @@ final_plots <- pd2 %>%
        caption = unique(pd2$label))))
 
 # Look at the plots:
-final_plots$plots[[1]]
+final_plots$plots[[1:4]]
 ```
 
 ## 3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
 
 ```{r save_plots}
+fs::dir_create(here::here("plots", "Achieve_Gap"))
 
-```
+# files <- str_replace_all(tolower(final_plots$plots), " ", "_")
+# paths <- here::here("plots", "final_plots", glue("{files}.png"))
+# paths
+# walk2(paths, final_plots$plots, ggsave,
+#       width = 9.5, 
+#       height = 6.5,
+#       dpi = 500)
+# ```
