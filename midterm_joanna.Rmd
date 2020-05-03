@@ -232,7 +232,7 @@ ggplot(tmp_pd, aes(academic_year, v)) +
 # now generalize this to loop over all plots.
 # to do so, for need to nest data so that we can loop through lists: 
 pd2 <- pd2 %>%
-    group_by(district) %>%
+    group_by(district, label) %>%
     nest()
 
 tmp_plots <- pd2 %>%
@@ -252,31 +252,30 @@ tmp_plots$plots[[5]]
 # Also need to create unique title for each plot: 
 
 final_plots <- pd2 %>%
-    mutate(plots = pmap(list(district, data),
-    ~ggplot(..2, aes(academic_year, v)) +
-        geom_point(aes(color = v > 0)) +
-    geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
-    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+    mutate(plots = pmap(list(district, label, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+      geom_point(aes(color = v > 0)) +
+      scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+    geom_line(aes(x = as.numeric(as.factor(academic_year))),
+              color = "grey70") +
+    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se),
+                  color = "grey70") +
+            geom_point(aes(color = v > 0)) +
+      scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
     geom_hline(yintercept = 0, color = "red") +
     theme(plot.title.position = "plot",
           plot.subtitle = element_markdown(),
           legend.position = "none") +
     labs(x = "School year",
          y = "Average achievement difference (SD units)",
-         caption = unique(pd2$data$label),
-         title = unique(pd2[[data]]$title), 
+         caption = glue("{..2}"),
+         title = glue("Achievement Gap Estimates: {..1}"), 
          subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
        Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
 
+
 # looking at the plots: 
-final_plots$plots[[5]]
-
-# HOW TO EXTRACT TITLE????
-# pd2[["data"]]
-# unique(pd2$data$title)
-
-# something is wrong here. Still have many plots for each district instead of just one. 
-# also need to set condition for geom_point colors: point colors should match subtitle colors 
+final_plots$plots[[8]]
 
 ```
 
@@ -284,13 +283,29 @@ final_plots$plots[[5]]
 
 ```{r}
 
-# files <- str_replace_all(tolower(final_plots$plots), " ", "_")
-# paths <- here::here("plots", "final_plots", glue("{files}.png"))
-# paths
-# walk2(paths, final_plots$plots, ggsave,
-#       width = 9.5, 
-#       height = 6.5,
-#       dpi = 500)
+fs::dir_create(here::here("joanna_plots"))
 
+# trying for first 2 districts to make sure it works: 
+tmp_final_plots <- final_plots %>%
+  filter(district == "Adrian SD 61" |
+           district == "Amity SD 4J")
+
+files <- str_replace_all(tolower(tmp_final_plots$district), " ", "_")
+paths <- here::here("joanna_plots", glue("{files}.png"))
+# paths
+walk2(paths, tmp_final_plots$plots, ggsave,
+       width = 9.5, 
+       height = 6.5,
+       dpi = 500)
+
+# generalizing to all files:
+
+files <- str_replace_all(tolower(final_plots$district), " ", "_")
+paths <- here::here("joanna_plots", glue("{files}.png"))
+# paths
+walk2(paths, final_plots$plots, ggsave,
+       width = 9.5, 
+       height = 6.5,
+       dpi = 500)
 
 ```
