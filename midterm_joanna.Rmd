@@ -213,7 +213,9 @@ pd %>% filter(district == "Bandon SD 54") %>%
 # first, create column that is the caption we want: 
 pd2 <- pd %>%
     mutate(label = 
-    glue("Note. District included {(n_schools)} schools."))
+    glue("Note. District included {(n_schools)} schools."),
+    title = 
+    glue("Achievment Gap Estimates: {(district)}"))
 
 tmp_pd <- pd2 %>%
   filter(district == "Bandon SD 54")
@@ -229,55 +231,52 @@ ggplot(tmp_pd, aes(academic_year, v)) +
 
 # now generalize this to loop over all plots.
 # to do so, for need to nest data so that we can loop through lists: 
-pd2 %>%
-    group_by(district, label) %>%
+pd2 <- pd2 %>%
+    group_by(district) %>%
     nest()
 
-final_plots <- pd2 %>%
-    group_by(district, label) %>%
-    nest() %>%
-    mutate(plots = pmap(list(district, label, data),
-    ~ggplot(..3, aes(academic_year, v), show.legend = FALSE) +
-        geom_point(aes(color = v > 0), show.legend = FALSE) +
+tmp_plots <- pd2 %>%
+    mutate(plots = pmap(list(district, data),
+    ~ggplot(..2, aes(academic_year, v)) +
+        geom_point(aes(color = v > 0)) +
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "red") +
     labs(x = "School year",
          y = "Average achievement difference (SD units)",
-         caption = unique(pd2$label))))
+         caption = unique(pd2$data$label))))
 
 # now we can look at some of the plots: 
-final_plots$plots[[1]]
+tmp_plots$plots[[5]]
 
 # Also need to create unique title for each plot: 
 
-pd2 <- pd2 %>%
-    mutate(title = 
-    glue("Achievment Gap Estimates: {(district)}"))
-
 final_plots <- pd2 %>%
-    group_by(district, label) %>%
-    nest() %>%
-    mutate(plots = pmap(list(district, label, data),
-    ~ggplot(..3, aes(academic_year, v)) +
+    mutate(plots = pmap(list(district, data),
+    ~ggplot(..2, aes(academic_year, v)) +
         geom_point(aes(color = v > 0)) +
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "red") +
     theme(plot.title.position = "plot",
           plot.subtitle = element_markdown(),
-          legend.position = "none")+
+          legend.position = "none") +
     labs(x = "School year",
          y = "Average achievement difference (SD units)",
-         caption = unique(pd2$label),
-         title = unique(pd2$title),
+         caption = unique(pd2$data$label),
+         title = unique(pd2[[data]]$title), 
          subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
        Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
 
 # looking at the plots: 
-final_plots$plots[[1]]
+final_plots$plots[[5]]
+
+# HOW TO EXTRACT TITLE????
+# pd2[["data"]]
+# unique(pd2$data$title)
 
 # something is wrong here. Still have many plots for each district instead of just one. 
+# also need to set condition for geom_point colors: point colors should match subtitle colors 
 
 ```
 
