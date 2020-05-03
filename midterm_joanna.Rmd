@@ -12,6 +12,8 @@ knitr::opts_chunk$set(cache = TRUE)
 # install.packages("glue")
 library(glue)
 library(tidyverse)
+library(gapr)
+library(ggtext)
 
 ```
 
@@ -235,8 +237,8 @@ final_plots <- pd2 %>%
     group_by(district, label) %>%
     nest() %>%
     mutate(plots = pmap(list(district, label, data),
-    ~ggplot(..3, aes(academic_year, v)) +
-        geom_point(aes(color = v > 0)) +
+    ~ggplot(..3, aes(academic_year, v), show.legend = FALSE) +
+        geom_point(aes(color = v > 0), show.legend = FALSE) +
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "red") +
@@ -262,10 +264,18 @@ final_plots <- pd2 %>%
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "red") +
+    theme(plot.title.position = "plot",
+          plot.subtitle = element_markdown(),
+          legend.position = "none")+
     labs(x = "School year",
          y = "Average achievement difference (SD units)",
          caption = unique(pd2$label),
-         title = unique(pd2$title))))
+         title = unique(pd2$title),
+         subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
+       Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
+
+# looking at the plots: 
+final_plots$plots[[1]]
 
 # something is wrong here. Still have many plots for each district instead of just one. 
 
@@ -274,5 +284,14 @@ final_plots <- pd2 %>%
 ##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
 
 ```{r}
+
+# files <- str_replace_all(tolower(final_plots$plots), " ", "_")
+# paths <- here::here("plots", "final_plots", glue("{files}.png"))
+# paths
+# walk2(paths, final_plots$plots, ggsave,
+#       width = 9.5, 
+#       height = 6.5,
+#       dpi = 500)
+
 
 ```
