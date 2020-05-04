@@ -40,19 +40,21 @@ data <- map_df(years, ~download_file(.x)) %>%
 ## Data Cleaning
 ```{r data cleaning}
 
-
 td <- data %>% 
   pivot_longer(contains("number_level"), 
   names_to = "level", 
   values_to = "n") %>%  
   mutate(level = str_extract(level, "[0-9]")) %>% 
-  select(academic_year, district, school, student_group, grade_level, level, n) %>% 
+  select(academic_year, 
+         district, school, 
+         student_group, 
+         grade_level, 
+         level, 
+         n) %>% 
   filter(student_group == "Hispanic/Latino" |
            student_group == "White") %>% 
   drop_na()
   
-
-
 ```
 
 ##2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calculate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
@@ -77,7 +79,13 @@ students <- td %>%
 #join the 2 df together, drop NA, re-order the columns
 td2 <- left_join(students, unique_school) %>% 
   drop_na() %>% 
-  select(academic_year, district, n_schools, level, hispanic_latino, white)
+  select(academic_year,
+         district,
+         n_schools,
+         level,
+         hispanic_latino,
+         white) %>% 
+  mutate(academic_year = as.factor(academic_year))
 
 td2
 
@@ -99,12 +107,12 @@ td[1:4, ] %>% # data source - just first four rows for first district
 
 #nest data by year and district 
 by_district <- td2 %>%
-    nest(-district, -academic_year)
+    nest(-district, -academic_year, -n_schools)
 
 
 #loop estimate_v function through each district, for each academic year by using the nested df above
-results_by_district <- td2 %>%
-  mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
+results_by_district <- by_district %>%
+  mutate(gap = map(by_district$data, ~estimate_v("white", "hispanic_latino", 
                                   data = .x))) %>% 
   select(-data) %>% 
   unnest(gap)
@@ -158,7 +166,7 @@ psub <- pd_subset %>%
                 ~ggplot(..2, aes(academic_year, v)) +
                         geom_point(aes(color = v > 0)) +
                         scale_colour_manual(values =  c("#A563CA", "#6DA3F9")) +
-  geom_line(aes(x = as.numeric(as.factor(academic_year))), , color = "grey70") +
+  geom_line(aes(x = as.numeric(academic_year)), , color = "grey70") +
   geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se), color = "grey70") +
   geom_hline(yintercept = 0, color = "#cb615d"))) 
 
@@ -170,19 +178,22 @@ psub$plots[2]
 ```{r}
 
 final_plots <- pd %>%
+  group_by(district, n_schools) %>% 
+  nest () %>% 
     mutate(plots = pmap(list(district, n_schools, data),
     ~ggplot(..3, aes(academic_year, v)) +
-      geom_point(aes(color = v > 0)) +
+      geom_point(aes(color = v > 0), size = 2) +
           scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
-      geom_line(aes(x = as.numeric(as.factor(academic_year))),
+      geom_line(aes(x = as.numeric(academic_year)),
               color = "grey70") +
       geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se),color = "grey70") +
+      geom_hline(yintercept = 0, color = "red", size = 0.5) +
       geom_point(aes(color = v > 0)) +
-          scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
-      geom_hline(yintercept = 0, color = "red") +
+          scale_color_manual(values = c("#C468F7", "#6DA3F9")) + #added twice, because removing this from above layer gives an error
       theme(plot.title.position = "plot",
           plot.subtitle = element_markdown(),
-          legend.position = NULL) +
+          legend.position = "none",
+          ) +
     labs(x = "School year",
          y = "Average achievement difference (SD units)",
          caption = glue("Note: District included {..2} schools."),
@@ -198,4 +209,20 @@ final_plots$plots[[8]]
 ```
 
 
-##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+## 3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+```{r}
+
+fs::dir_create(here::here("akhila_plots"))
+
+files <- str_replace_all(tolower(final_plots$district), " ", "_")
+paths <- here::here("akhila_plots", glue("{files}.png"))
+paths
+
+walk2(paths, final_plots$plots, ggsave,
+       width = 9.5, 
+       height = 6.5,
+       dpi = 500)
+
+
+```
+
