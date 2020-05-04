@@ -9,8 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(cache = TRUE)
 
-library(glue)
 library(tidyverse)
+library(glue)
 library(gapr)
 library(ggtext)
 ```
@@ -34,17 +34,16 @@ names(data)
 
 td <- data %>%
   pivot_longer(contains("Number Level"),
-  names_to = "level", 
-  values_to = "n") %>%  
-  mutate(level = str_extract(level, "[0-9]")) %>% 
+  names_to = "level",
+  values_to = "n") %>%
+  mutate(level = str_extract(level, "[0-9]")) %>%
   select(`Academic Year`, District, School, `Student Group`, `Grade Level`, level, n) %>% 
   filter(`Student Group` == "Hispanic/Latino" |
-           `Student Group` == "White") %>% 
+           `Student Group` == "White") %>%
   drop_na()
   
 td <- td %>%
   janitor::clean_names()
-
 td
 ```
 
@@ -115,7 +114,7 @@ sub_by_district_year_results <- sub_by_district_year %>%
            select(-data) %>%
            unnest(gap)
 
-# Moving to entire data.
+# Move to entire data.
 results_by_district <- by_district %>%
     mutate(gap = map(by_district$data, ~estimate_v("white", "hispanic_latino",
                                                    data = .x))) %>%
@@ -184,12 +183,12 @@ final_plots <- pd2 %>%
     group_by(district, label) %>%
     nest() %>%
     mutate(plots = pmap(list(district, label, data),
-    ~ggplot(..3, aes(academic_year, v), show.legend = FALSE) +
-        geom_point(aes(color = v > 0), show.legend = FALSE) +
+    ~ggplot(..3, aes(academic_year, v)) +
+        geom_point(aes(color = v > 0)) +
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "#CC615D") +
-    theme(
+    theme(legend.position = "none",
     plot.title.position = "plot",
     plot.subtitle = element_markdown()) +
   labs(x = "School year",
@@ -200,7 +199,7 @@ final_plots <- pd2 %>%
        caption = unique(pd2$label))))
 
 # Look at the plots:
-final_plots$plots[[1:4]]
+final_plots$plots[[1]]
 ```
 
 ## 3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
