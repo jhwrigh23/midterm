@@ -11,13 +11,15 @@ knitr::opts_chunk$set(cache = TRUE)
 
 library(glue)
 library(tidyverse)
+library(ggtext)
+library(gapr)
 
 ```
 
 
 # Part A: Data 
 
-##1. Use the function to download all the data from 2014-15 to each of the past 4 school years and bind it into a single data frame, using a single function (i.e., one line of code). Note, this may take a minute or two to run, depending on your Internet speed.
+## 1. Use the function to download all the data from 2014-15 to each of the past 4 school years and bind it into a single data frame, using a single function (i.e., one line of code). Note, this may take a minute or two to run, depending on your Internet speed.
 
 ```{r download_file}
 
@@ -35,15 +37,9 @@ data <- map_df(years, ~download_file(.x)) %>%
 
 ```
 
-Conduct some basic data cleaning to make your data file look like the following.
-
-Filter for only student groups coded as "White" or "Hispanic/Latino".
-Select variables related to the number of students in each of the levels (1:4), and not percentages or collapsed levels.
-Remove any row that has missing data in any of the n variables
-
+## Data Cleaning
 ```{r data cleaning}
 
-names(data)
 
 td <- data %>% 
   pivot_longer(contains("number_level"), 
@@ -55,26 +51,21 @@ td <- data %>%
            student_group == "White") %>% 
   drop_na()
   
-td
+
 
 ```
 
-##2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calulate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
+##2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calculate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
 
 ```{r}
 
-str(td)
-names(td)
-
-#create 2 separate df and join them together 
-#unique schools 
-
+#df1 has all the unique schools in each district
 unique_school <- td %>% 
   group_by(district) %>% 
   summarise(n_schools = length(unique(school))) %>% 
   ungroup()
 
-#number of students (n)
+#df2 has the number of students in each district, by academic year and level
 students <- td %>% 
   group_by(district, academic_year, student_group, level) %>% 
   summarise(n = sum(n)) %>% 
@@ -91,11 +82,12 @@ td2 <- left_join(students, unique_school) %>%
 td2
 
 ```
-#Part B: Acheivement Gaps 
+# Part B: Acheivement Gaps 
 
 ```{r}
 
-library(gapr)
+#estimate_v estimates the average diference between two groups
+
 td[1:4, ] %>% # data source - just first four rows for first district
   estimate_v("white", "hispanic_latino") # columns for reference/focal groups
 
@@ -107,15 +99,16 @@ td[1:4, ] %>% # data source - just first four rows for first district
 
 #nest data by year and district 
 by_district <- td2 %>%
-    nest(-district, -academic_year, -n_schools)
-by_district
+    nest(-district, -academic_year)
 
-#run achievement gap effect size and extract auc, v and v_se
-results_by_district <- by_district %>%
+
+#loop estimate_v function through each district, for each academic year by using the nested df above
+results_by_district <- td2 %>%
   mutate(gap = map(data, ~estimate_v("white", "hispanic_latino", 
                                   data = .x))) %>% 
   select(-data) %>% 
   unnest(gap)
+
 
 ```
 
@@ -126,56 +119,83 @@ Hint: You need to select unique districts.
 
 ```{r}
 
+#find the first 100 unique districts from our results -- character
 dists <- unique(results_by_district$district)[1:100]
 
+#create new object that selects for the 100 we identified above
 pd <- results_by_district %>% 
   filter(district %in% dists)
 
+#check
 unique(pd$district)
-
-#to get number of rows 
-pd %>% count(district)
 
 
 ```
 
-##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+## First try with a subset.
 
 ```{r}
 
+#create subset to test code
 pd_subset <- pd %>% 
   filter(district == "Adrian SD 61" |
            district == "Amity SD 4J")
 
-#call as.numeric on factor to connect dots
+# try on one plot
+#call as.numeric on academic year so geom_line can connect dots 
 pd %>% filter(district == "Bandon SD 54") %>% 
   ggplot(aes(academic_year, v)) + 
   geom_point(aes(color = v > 0)) +
-  geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
+  geom_line(aes(x = as.numeric(academic_year))) +
   geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
 
 
 #loop through subset of data
-plot_sub <- pd_subset %>% 
+psub <- pd_subset %>% 
   group_by(district) %>% 
   nest() %>% 
   mutate(plots = pmap(list(district, data),
-                      ~ggplot(..2, aes(academic_year, v)) +
+                ~ggplot(..2, aes(academic_year, v)) +
                         geom_point(aes(color = v > 0)) +
                         scale_colour_manual(values =  c("#A563CA", "#6DA3F9")) +
   geom_line(aes(x = as.numeric(as.factor(academic_year))), , color = "grey70") +
   geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se), color = "grey70") +
-  geom_hline(yintercept = 0, color = "#cb615d"))) +
-  theme_set(theme_minimal())
+  geom_hline(yintercept = 0, color = "#cb615d"))) 
 
-plot_sub$plots[2]
+psub$plots[2]
 
-labs(title = "Achievement Gap Estimates: Bandon School District",
-       subtitle = "Negative values indicate <span style = 'color:#A563CA;'>White</span> students have higher average achievement Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino </span>students have higher average achievement",
-
-
-#loop through full data
-
-  
-  
 ```
+
+## Final Plots
+```{r}
+
+final_plots <- pd %>%
+    mutate(plots = pmap(list(district, n_schools, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+      geom_point(aes(color = v > 0)) +
+          scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+      geom_line(aes(x = as.numeric(as.factor(academic_year))),
+              color = "grey70") +
+      geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se),color = "grey70") +
+      geom_point(aes(color = v > 0)) +
+          scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+      geom_hline(yintercept = 0, color = "red") +
+      theme(plot.title.position = "plot",
+          plot.subtitle = element_markdown(),
+          legend.position = NULL) +
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = glue("Note: District included {..2} schools."),
+         title = glue("Achievement Gap Estimates: {..1}"), 
+         subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
+       Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
+
+
+# looking at the plots: 
+final_plots$plots[[8]]
+
+
+```
+
+
+##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
