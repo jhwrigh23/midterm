@@ -1,23 +1,26 @@
 ---
-title: "Stephanie Midterm"
+title: "EDLD 610: Functional Programming Midterm"
 author: "Stephanie Gluck"
-date: "4/22/2020"
-output: html_document
+date: "5/3/2020"
+output: 
+  html_document: 
+    highlight: kate
+    theme: paper
 ---
-
-https://uo-datasci-specialization.github.io/c3-fun_program2020/midterm.html
 
 ```{r setup}
 knitr::opts_chunk$set(cache = TRUE)
 
 library(tidyverse)
+library(ggtext)
 library(janitor)
+library(glue)
 ```
 
 
-# Part A: Data 
+## Part A: Data 
 
-##1. Use the function to download all the data from 2014-15 to each of the past 4 school years and bind it into a single data frame, using a single function (i.e., one line of code). Note, this may take a minute or two to run, depending on your Internet speed.
+### 1. Use the function to download all the data from 2014-15 to each of the past 4 school years and bind it into a single data frame, using a single function (i.e., one line of code). Note, this may take a minute or two to run, depending on your Internet speed.
 
 ```{r download_file}
 
@@ -46,7 +49,7 @@ Filter for only student groups coded as "White" or "Hispanic/Latino".
 Select variables related to the number of students in each of the levels (1:4), and not percentages or collapsed levels.
 Remove any row that has missing data in any of the n variables
 
-```{r data cleaning}
+```{r data_cleaning}
 
 names(data)
 
@@ -64,9 +67,9 @@ td
 
 ```
 
-##2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calulate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
+### 2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calulate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
 
-```{r}
+```{r data_wrangling}
 
 str(td)
 names(td)
@@ -97,16 +100,13 @@ td2
 
 ```
 
-#Part B: Acheivement Gaps 
+## Part B: Acheivement Gaps 
 
-```{r}
+### 1. (10 points) Estimate an achievement gap effect size for every school district in the state that reported data on both student groups (i.e., using the data we created above), for each academic year. Note, on my computer this took about 38 seconds. It will likely take a bit longer for you, but shouldn’t take too long. You may get a warning. Just go ahead and ignore that for now.
+
+```{r effect_size}
+
 library(gapr)
-
-```
-
-##1. (10 points) Estimate an achievement gap effect size for every school district in the state that reported data on both student groups (i.e., using the data we created above), for each academic year. Note, on my computer this took about 38 seconds. It will likely take a bit longer for you, but shouldn’t take too long. You may get a warning. Just go ahead and ignore that for now.
-
-```{r}
 
 #nest data by year and district 
 by_district <- td2 %>%
@@ -122,11 +122,11 @@ results_by_district <- by_district %>%
 ```
 
 
-##2. (10 points) The plot below shows the achievement gap estimate for one school district across years. Produce a similar plot to the below for each of the first 100 school districts. Make sure you don’t miss the caption noting the number of schools in the district.
+### 2. (10 points) The plot below shows the achievement gap estimate for one school district across years. Produce a similar plot to the below for each of the first 100 school districts. Make sure you don’t miss the caption noting the number of schools in the district.
 
 Hint: You need to select unique districts.
 
-```{r}
+```{r unique_districts}
 dists <- unique(results_by_district$district)[1:100]
 
 pd <- results_by_district %>% 
@@ -134,164 +134,105 @@ pd <- results_by_district %>%
 
 unique(pd$district)
 
-#to get number of rows 
+#to examine number of rows 
 pd %>% count(district)
 
 ```
 
-##3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+```{r plot,  fig.height = 6, fig.width = 8}
 
-```{r}
+theme_set(theme_minimal(14))
 
-theme_set(theme_minimal())
-
-pd_subset <- pd %>% 
-  filter(district == "Adrian SD 61" |
-           district == "Amity SD 4J")
-
-#plot 1 graph
-#need to define year as numeric (from character) in order to connect line
+#create one plot first
+# as.factor() makes acacdemic year a factor; then can call as.numeric() on this to make academic_year numeric in order to connect via geam_line: 
 pd %>% filter(district == "Bandon SD 54") %>% 
   ggplot(aes(academic_year, v)) + 
   geom_point(aes(color = v > 0)) +
-  scale_color_manual(values = c("#A563CA", "#6DA3F9")) +
   geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
-  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se))
+  geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
+  geom_hline(yintercept = 0, color = "red") +
+  labs(x = "School year",
+       y = "Average achievement difference (SD units)")
 
 
-#loop through with 2 school districts using pd_subset
+#create column that is the caption we want: 
+pd2 <- pd %>%
+    mutate(label = 
+    glue("Note. District included {(n_schools)} schools."),
+    title = 
+    glue("Achievment Gap Estimates: {(district)}"))
 
-plots <- pd_subset %>% 
-  group_by(district) %>% 
-  nest() %>% 
-  mutate(plots = pmap(list(district, data), 
-                      ~ggplot(..2, aes(academic_year, v)) +
-                        geom_point(color = ) +
-                        geom_line(aes(x = as.numeric(as.factor
-                                                     (academic_year))),
-                                  color = "gray40") +
-                        geom_errorbar(aes(ymin = v - v_se, 
-                                          ymax = v + v_se), 
-                                      color = "gray40") +
-                        geom_hline(yintercept = 0, color = "#cb615d")
-                      )) 
+#create multiple plot
+pd2 <- pd2 %>%
+    group_by(district, label) %>%
+    nest()
 
-#look at individual plot
-plots[[3]][[1]]
-plots$plots[[1]]
+final_plots <- pd2 %>%
+    mutate(plots = pmap(list(district, label, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+      geom_point(aes(color = v > 0)) +
+    geom_line(aes(x = as.numeric(as.factor(academic_year))),
+              color = "grey70", 
+              size = 1) +
+    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se),
+                  color = "grey70", 
+                  size = 1, 
+                  width = 0.4) +
+            geom_point(aes(color = v > 0), 
+                       size = 3) +
+      scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+    geom_hline(yintercept = 0, color = "red",
+               size = 1) +
+    theme(plot.title.position = "plot",
+          plot.subtitle = element_markdown(),
+          legend.position = "none") +
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = glue("{..2}"),
+         title = glue("Achievement Gap Estimates: {..1}"), 
+         subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
+       Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
 
-#example from class slide for plot and adding name to plot
-final_plots <- pulitzer %>%
-    group_by(newspaper, label) %>%
-    nest() %>%
-    mutate(plots = pmap(list(newspaper, label, data),
-    ~ggplot(..3, aes(year_range, n)) +
-        geom_col(aes(fill = n)) +
-        scale_fill_distiller(type = "seq", 
-                             limits = c(0, max(pulitzer$n)),
-                             palette = "BuPu",
-                             direction = 1) +
-        ylim(0, max(pulitzer$n)) +
-        coord_flip() +
-        labs(title = glue("Pulitzer prize winners: {..1}"),
-             x = "Year Range",
-             caption = ..2)))
+
+# looking at one of the plots: 
+final_plots$plots[[8]]
+
 
 ```
 
 
+### 3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
+
+```{r save_plots}
 
 
-```{r, eval = FALSE}
-#Stephanie comment: this is ranom codes I was playing with, ignore, will be deleted on final version of midterm 
+fs::dir_create(here::here("stephanie_plots"))
 
-td2[1:4, ] %>% # data source - just first four rows for first district
-  gapr::estimate_v("white", "hispanic_latino") 
-
-#make academic year & district a factor 
-td2 <- td2 %>% 
-  mutate(academic_year = as.factor(academic_year))
-
-str(td2)
-
-d_split <- split(td2, td2$district)
-
-#map estimate_v for all school district 
-#gap <- map(d_split, ~estimate_v("white", "hispanic_latino", data = .x))
-#yay worked! (took a while to run)
-
-#extract only 2 school district to play w code
-sub_split <- d_split[1:2]
-str(sub_split)
-
-#returns factor 
-sub_split[[1]]$academic_year
-
-#returns tibble
-sub_split[[1]][1]
-
-#works for across school district (not separated by year)
-gap <- map(sub_split, ~estimate_v("white", "hispanic_latino", 
-                                  data = .x))
-gap
-
-
-
-#subset by only 2 district to simplify and for playing w code
-sub_by_district <- td2 %>%
+# trying for first 2 districts to make sure it works: 
+tmp_final_plots <- final_plots %>%
   filter(district == "Adrian SD 61" |
-           district == "Amity SD 4J") %>% 
-    nest(-district)
-    
-sub_by_district
+           district == "Amity SD 4J")
 
+tmp_final_plots$plots[[2]]
 
-# by_district_gap_sub <- sub_by_district %>%
-#   mutate(year = map(data, "academic_year"))
-   
-str(by_district_gap_sub)
+files <- str_replace_all(tolower(tmp_final_plots$district), " ", "_")
+paths <- here::here("stephanie_plots", glue("{files}.png"))
 
-dists <- unique(by_district_gap$district)[1:100]
+# paths
+walk2(paths, tmp_final_plots$plots, ggsave,
+       width = 9, 
+       height = 6,
+       dpi = 100)
 
-test <- by_district_gap %>% 
-  filter(district %in% dists)
+# generalizing to all files:
 
-test$gap
-
-str(test$gap)
-
-#need to extract v and v_se
-
-test[["gap"]][[1]]["v"]
-test[["gap"]][[1]]["v_se"]
-
-#use unnest to extract v and v_se
-test <- test %>% 
-  mutate(tidied = map(gap, broom::tidy)) %>% 
-  select(academic_year, district, tidied) %>%  
-  unnest() %>%  
-  select(academic_year, district, column, mean)
-  
-
-str(test)
-
-test <- test %>% pivot_wider(names_from = "column", values_from = "mean")
-test
-
-#testing codes not working 
-test %>%
-    mutate(v = map_dbl(gap, ~([[.x]][[1]]["v"])))
-
-p12 = map_dbl(comp12, list("Pr(>F)", 2)))
-
-#extract v and v_se
-test$gap[[1]]$v
-
-str(test2)
-
-test2$v
-test$gap
-
+files <- str_replace_all(tolower(final_plots$district), " ", "_")
+paths <- here::here("stephanie_plots", glue("{files}.png"))
+# paths
+walk2(paths, final_plots$plots, ggsave,
+       width = 9, 
+       height = 6,
+       dpi = 100)
 
 ```
 
