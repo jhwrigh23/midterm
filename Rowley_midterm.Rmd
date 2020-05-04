@@ -47,7 +47,7 @@ td <- td %>%
 td
 ```
 
-## 2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calulate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below
+## 2. (5 points) Collapse (sum) the n across grades and school for each district within each academic year, student group, and level. At the same time, calulate the number of schools (unique schools listed) for each district. Also move your data to a wider format where the student groups become new columns, filled by the district n. Remove districts that did not report numbers for one or both student groups (i.e., drop missing data from the new columns). Your data frame should look like the below.
 ```{r clean2}
 # Two df's joined them together with unique schools.
 unique_school <- td %>%
@@ -74,6 +74,7 @@ td2 <- left_join(students, unique_school) %>%
          hispanic_latino,
          white
          )
+td2
 ```
 
 # Part B: Acheivement Gaps
@@ -114,7 +115,7 @@ sub_by_district_year_results <- sub_by_district_year %>%
            select(-data) %>%
            unnest(gap)
 
-# Move to entire data.
+# Generalize to whole data set.
 results_by_district <- by_district %>%
     mutate(gap = map(by_district$data, ~estimate_v("white", "hispanic_latino",
                                                    data = .x))) %>%
@@ -154,7 +155,9 @@ pd %>% filter(district == "Bandon SD 54") %>%
 # Trying with one (Bandon) school district.
 pd2 <- pd %>%
     mutate(label =
-    glue("Note. District included {(n_schools)} schools."))
+    glue("Note. District included {(n_schools)} schools."),
+    title = 
+    glue("Achievment Gap Estimates: {(district)}"))
 
 tmp_pd <- pd2 %>%
   filter(district == "Bandon SD 54")
@@ -175,43 +178,76 @@ ggplot(tmp_pd, aes(academic_year, v)) +
        caption = unique(tmp_pd$label))
 
 # Nest data to loop through lists for all plots.
-pd2 %>%
+pd2 <- pd2 %>%
     group_by(district, label) %>%
     nest()
 
-final_plots <- pd2 %>%
-    group_by(district, label) %>%
-    nest() %>%
-    mutate(plots = pmap(list(district, label, data),
-    ~ggplot(..3, aes(academic_year, v)) +
+tmp_plots <- pd2 %>%
+    mutate(plots = pmap(list(district, data),
+    ~ggplot(..2, aes(academic_year, v)) +
         geom_point(aes(color = v > 0)) +
     geom_line(aes(x = as.numeric(as.factor(academic_year)))) +
     geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se)) +
     geom_hline(yintercept = 0, color = "#CC615D") +
-    theme(legend.position = "none",
-    plot.title.position = "plot",
-    plot.subtitle = element_markdown()) +
-  labs(x = "School year",
-       y = "Average achievement difference (SD units)",
-       title = glue("Achievement Gap Estimates: {(pd2$district)}"),
-       subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
-       Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.",
-       caption = unique(pd2$label))))
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = unique(pd2$data$label))))
+
+# Look at plots:
+tmp_plots$plots[[5]]
+
+final_plots <- pd2 %>%
+    mutate(plots = pmap(list(district, label, data),
+    ~ggplot(..3, aes(academic_year, v)) +
+      geom_point(aes(color = v > 0)) +
+      scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+    geom_line(aes(x = as.numeric(as.factor(academic_year))),
+              color = "grey70") +
+    geom_errorbar(aes(ymin = v - v_se, ymax = v + v_se),
+                  color = "grey70") +
+            geom_point(aes(color = v > 0)) +
+      scale_color_manual(values = c("#C468F7", "#6DA3F9")) +
+    geom_hline(yintercept = 0, color = "#CC615D") +
+    theme(plot.title.position = "plot",
+          plot.subtitle = element_markdown(),
+          legend.position = "none") +
+    labs(x = "School year",
+         y = "Average achievement difference (SD units)",
+         caption = glue("{..2}"),
+         title = glue("Achievement Gap Estimates: {..1}"), 
+         subtitle = "Negative values indicate <span style = 'color:#C468F7;'>White</span> students have higher average achievement  
+       Positive values indicate <span style = 'color:#6DA3F9;'>Hispanic/Latino</span> students have higher average achievement.")))
 
 # Look at the plots:
-final_plots$plots[[1]]
+final_plots$plots[[8]]
 ```
 
 ## 3. (10 points) Save the plots into a “plots” directory. Make sure the file names are meaningful.
 
 ```{r save_plots}
-fs::dir_create(here::here("plots", "Achieve_Gap"))
+fs::dir_create(here::here("Brock's_plots"))
 
-# files <- str_replace_all(tolower(final_plots$plots), " ", "_")
-# paths <- here::here("plots", "final_plots", glue("{files}.png"))
-# paths
-# walk2(paths, final_plots$plots, ggsave,
-#       width = 9.5, 
-#       height = 6.5,
-#       dpi = 500)
-# ```
+# 5 districts: 
+tmp_final_plots <- final_plots %>%
+  filter(district == "Adel SD 21" |
+           district == "Adrian SD 61" |
+           district == "Alsea SD 7J" |
+           district == "Annex SD 29" |
+           district == "Amity SD 4J")
+
+files <- str_replace_all(tolower(tmp_final_plots$district), " ", "_")
+paths <- here::here("Brock's_plots", glue("{files}.png"))
+
+walk2(paths, tmp_final_plots$plots, ggsave,
+       width = 9.5, 
+       height = 6.5,
+       dpi = 500)
+
+# All files:
+files <- str_replace_all(tolower(final_plots$district), " ", "_")
+paths <- here::here("Brock's_plots", glue("{files}.png"))
+
+walk2(paths, final_plots$plots, ggsave,
+       width = 9.5, 
+       height = 6.5,
+       dpi = 500)
